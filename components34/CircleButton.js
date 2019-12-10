@@ -16,8 +16,9 @@ class CircleButton extends Component {
                 <View style={styles.container}>
                     <Icon
                         name={this.props.name}
-                        color='pink'
+                        color='#c9185f'
                         size={Number(this.props.size)}
+                        raised
                     />
 
                 </View>

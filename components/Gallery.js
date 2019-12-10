@@ -1,18 +1,16 @@
 import React, { Component } from 'react';
-import { View, Text, StyleSheet, ToastAndroid, BackHandler } from 'react-native';
-import { Dimensions } from 'react-native';
-import * as MediaLibrary from "expo-media-library";
-
+import { View, Text, StyleSheet, FlatList, Dimensions, ToolbarAndroid } from 'react-native';
 import MyButton from './MyButton';
-
-import { FlatList } from 'react-native-gesture-handler';
-import PhotoItem from './PhotoItem';
+import * as MediaLibrary from "expo-media-library";
+import FotoItem from './FotoItem';
+import { ToastAndroid } from 'react-native';
 
 class Gallery extends Component {
     static navigationOptions = {
-        title: "Zdjęcia zapisane w telefonie",
+        header: null,
+        title: "Zapisane zdjecia",
         headerStyle: {
-            backgroundColor: "#c9185f",
+            backgroundColor: "pink",
         },
         headerTitleStyle: {
             color: "#ffffff"
@@ -21,42 +19,39 @@ class Gallery extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            assets: [],
-            galleryType: false,
-            numColumns: 4,
-            deleteMod: false,
-            idsToDelete: []
+            useGrid: true,
+            photos: [],
+
         };
+
+        this.readPhotos()
     }
 
-    componentWillMount() {
-        this.props.navigation.addListener('willFocus', this.readAssets);
-        // this.readAssets()
+    componentDidMount() {
+        this.props.navigation.addListener('willFocus', this.readPhotos);
     }
 
-    readAssets = async () => {
-
+    readPhotos = async () => {
         let obj = await MediaLibrary.getAssetsAsync({
-            first: 100,
-            mediaType: 'photo'
+            first: 100,           // ilość pobranych assetów
+            mediaType: 'photo'    // typ pobieranych danych, photo jest domyślne
         })
 
-
-        let assets = obj.assets.map(el => {
+        let photos = obj.assets.map(el => {
 
             return {
                 id: el.id,
                 uri: el.uri,
-                selected: false
+                selected: false,
+                size: el.width + "x" + el.height
             }
-
         })
 
-        assets = assets.sort((a, b) => {
-            return b.id - a.id
+        photos = photos.sort((a, b) => {
+            return a.id - b.id
         })
 
-        this.setState({ assets });
+        this.setState({ photos: photos })
 
     }
 
@@ -64,27 +59,48 @@ class Gallery extends Component {
 
         return (
             <View style={styles.container}>
-                <View style={styles.options}>
-                    <MyButton onClick={this.galleryType}>Grid / List</MyButton>
-                    <MyButton onClick={() => { this.props.navigation.navigate("CameraScreen") }}>Open Camera</MyButton>
-                    <MyButton onClick={this.removeSelected}>Remove Selected</MyButton>
-                </View>
-                <View style={styles.assets}>
+                <ToolbarAndroid
+                    style={{
+                        backgroundColor: 'pink',
+                        height: 56, width: "100%",
+                        elevation: 5 // cień poniżej
+                    }}
+
+                    titleColor="white"
+                    // logo={require('./back.png')}
+                    title="Zdjęcia zapisane w telefonie"
+
+                    actions={[
+                        { title: 'Grid / List', show: 'never' },
+                        { title: 'Open Camera', show: 'never' },
+                        { title: 'Remove Selected', show: 'never' },
+                    ]}
+                    onActionSelected={this.onActionSelected}
+                />
+                {/* <View style={styles.buttons}>
+                    <MyButton text="Grid/List" onClick={() => { this.setState({ useGrid: !this.state.useGrid }) }} style={styles.button} />
+                    <MyButton
+                        text="Open Camera"
+                        onClick={() => { this.props.navigation.navigate("CameraScreen") }}
+                        style={styles.button}
+                    />
+                    <MyButton text="Remove Selected" onClick={this.removeSelected} style={styles.button} />
+                </View> */}
+
+                <View style={styles.content}>
                     <FlatList
                         data={
-                            this.state.assets
+                            this.state.photos
                         }
-                        numColumns={this.state.galleryType ? 1 : 4}
-                        key={this.state.galleryType ? 1 : 4}
+                        numColumns={this.state.useGrid ? 4 : 1}
+                        key={this.state.useGrid ? 4 : 1}
                         keyExtractor={(item, index) => item + index}
                         renderItem={({ item }) =>
-                            <PhotoItem
+                            <FotoItem
+                                onLongClick={this.goToBigPhoto}
                                 data={item}
-                                width={this.state.galleryType ? Dimensions.get('window').width - 2 : Dimensions.get('window').width / 4 - 2}
-                                height={this.state.galleryType ? Dimensions.get('window').width / 2 : Dimensions.get('window').width / 4 - 2}
-                                deleteMod={this.state.deleteMod}
-                                deleteModTrigger={this.useDeleteMod}
-                                editMode={this.editMode}
+                                width={this.state.useGrid ? Dimensions.get("window").width / 4 : Dimensions.get("window").width}
+                                height={this.state.useGrid ? Dimensions.get("window").width / 4 : Dimensions.get("window").width / 2}
                             />}
 
                     />
@@ -93,62 +109,62 @@ class Gallery extends Component {
         );
     }
 
-    galleryType = () => {
-        this.setState({ galleryType: !this.state.galleryType })
-    }
-
-    useDeleteMod = () => {
-
-        this.setState({
-            assets: this.state.assets.map(el => {
-                return { ...el, selected: false }
-            })
-        })
-
-        this.setState({ deleteMod: !this.state.deleteMod })
-
-        let handleBackPress = () => {
-            this.useDeleteMod();
-            BackHandler.removeEventListener('hardwareBackPress', handleBackPress);
-            return true;
+    onActionSelected = (position) => {
+        switch (position) {
+            case 0:
+                this.setState({ useGrid: !this.state.useGrid })
+                break;
+            case 1:
+                this.props.navigation.navigate("CameraScreen");
+                break;
+            case 2:
+                this.removeSelected();
+                break;
         }
-
-        if (this.state.deleteMod) {
-            BackHandler.addEventListener('hardwareBackPress', handleBackPress);
-        }
-        else {
-
-        }
-    }
-
-    editMode = (id, uri) => {
-        this.props.navigation.navigate("BigPhoto", { id, uri })
-
     }
 
     removeSelected = async () => {
 
-        let toDelete = this.state.assets.filter(el => {
-            return el.selected;
-
+        let toDeletePhotos = this.state.photos.filter(el => {
+            return el.selected
         })
 
-        let ids = toDelete.map(el => el.id);
-        if (ids.length == 0) {
+        if (toDeletePhotos.length == 0) {
             ToastAndroid.showWithGravity(
-                'Wybierz zdjęcia!',
+                'Zaznacz zdjęcia do usunięcia!',
+                ToastAndroid.SHORT,
+                ToastAndroid.CENTER
+            );
+            return;
+        }
+        // for (let p of toDeletePhotos) {
+        //     p.selected = false
+        // }
+
+        let ids = toDeletePhotos.map(el => {
+            return el.id
+        })
+
+        if (await MediaLibrary.deleteAssetsAsync(ids)) {
+            // this.setState({ photos: [] })
+            this.readPhotos();
+        }
+        else {
+            ToastAndroid.showWithGravity(
+                'Coś poszło nie tak!',
                 ToastAndroid.SHORT,
                 ToastAndroid.CENTER
             );
         }
+    }
 
-
-        await MediaLibrary.deleteAssetsAsync(ids);
-
-        this.readAssets();
-
-
-
+    goToBigPhoto = (id, uri, size) => {
+        console.log(id, uri);
+        this.props.navigation.navigate("BigPhoto", {
+            id,
+            uri,
+            size
+        })
     }
 }
 
@@ -156,15 +172,20 @@ const styles = StyleSheet.create({
     container: {
         flex: 1
     },
-    options: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        padding: 20
-    },
-    assets: {
+    buttons: {
         flex: 1,
-        backgroundColor: "white",
-        paddingRight: 1
+        flexDirection: 'row',
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: 10,
+    },
+    button: {
+        fontSize: 15,
+        fontWeight: "500",
+    },
+    content: {
+        flex: 10,
+
     }
 
 })

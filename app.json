@@ -1,5 +1,8 @@
 {
   "expo": {
+    "androidStatusBar": {
+      "backgroundColor": "pink"
+    },
     "name": "temp",
     "slug": "temp",
     "privacy": "public",

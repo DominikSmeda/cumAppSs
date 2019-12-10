@@ -1,20 +1,16 @@
 import React, { Component } from 'react';
-import { View, Text, StyleSheet, Animated, Dimensions, ScrollView } from 'react-native';
-import * as Permissions from "expo-permissions";
+import { View, Text, StyleSheet, ToastAndroid, Animated, ScrollView, Dimensions } from 'react-native';
 import { Camera } from 'expo-camera';
+import * as Permissions from "expo-permissions";
 import CircleButton from './CircleButton';
 import * as MediaLibrary from "expo-media-library";
-import { BackHandler } from "react-native"
-import { ToastAndroid } from 'react-native';
-
 import RadioGroup from './RadioGroup';
 
 class CameraScreen extends Component {
     static navigationOptions = {
-        // header: null,
-        title: "Camera",
+        title: "Kamera",
         headerStyle: {
-            backgroundColor: "pink",
+            backgroundColor: "#c9185f",
         },
         headerTitleStyle: {
             color: "#ffffff"
@@ -25,7 +21,7 @@ class CameraScreen extends Component {
         this.ratios = ["4:3", "16:9"];
         this.state = {
             hasCameraPermission: null,
-            type: Camera.Constants.Type.back,
+            type: Camera.Constants.Type.front,
             openSettings: false,
             ratio: this.ratios[0],
             whiteBalance: null,
@@ -36,11 +32,25 @@ class CameraScreen extends Component {
 
         };
         this.camera = null;
+
     }
 
-    toggle = async () => {
-        await this.getSizes();
+
+    componentDidMount = () => {
+        this.setPermission()
+
+
+    };
+
+    async setPermission() {
+        let { status } = await Permissions.askAsync(Permissions.CAMERA);
+        this.setState({ hasCameraPermission: status == 'granted' });
+    }
+
+    toggle = () => {
+
         if (this.openSettings) toPos = 700; else toPos = 0
+
         //animacja
 
         Animated.spring(
@@ -54,29 +64,10 @@ class CameraScreen extends Component {
         ).start();
 
         this.openSettings = !this.openSettings;
-
-    }
-
-    componentDidMount() {
-        this.setCameraPermission();
-        BackHandler.addEventListener('hardwareBackPress', this.handleBackPress)
-    }
-
-    componentWillUnmount() {
-        BackHandler.removeEventListener('hardwareBackPress', this.handleBackPress);
-    }
-
-    async setCameraPermission() {
-        let { status } = await Permissions.askAsync(Permissions.CAMERA);
-        this.setState({ hasCameraPermission: status == 'granted' });
-    }
-
-    handleBackPress = () => {
-        this.props.navigation.goBack()
-        return true;
     }
 
     render() {
+
 
         const { hasCameraPermission } = this.state;
         if (hasCameraPermission == null) {
@@ -87,21 +78,20 @@ class CameraScreen extends Component {
             return (
                 <View style={{ flex: 1 }}>
                     <Camera
+                        onCameraReady={() => this.getSizes()}
                         ratio={this.state.ratio}
                         whiteBalance={this.state.wb}
                         pictureSize={this.state.ps}
                         flashMode={this.state.fm}
                         ref={ref => {
                             this.camera = ref;
-
                         }}
                         style={{ flex: 1 }}
                         type={this.state.type}>
                         <View style={styles.buttons}>
-                            <CircleButton name="refresh" size="30" onClick={this.changeCamera} />
-                            <CircleButton name="camera" size="50" onClick={this.takePhoto} />
-                            <CircleButton name="settings" size="30" onClick={this.toggle} />
-
+                            <CircleButton name="refresh" size={25} reverse={true} onClick={this.changeCamera} />
+                            <CircleButton name="photo" size={35} onClick={this.takePhoto} />
+                            <CircleButton name="settings" size={25} onClick={this.toggle} />
                         </View>
                     </Camera>
                     <Animated.View
@@ -118,7 +108,7 @@ class CameraScreen extends Component {
                                 <Text style={styles.settingsTitle}>Settings</Text>
 
                                 <RadioGroup
-                                    color="pink"
+                                    color="red"
                                     change={(e) => {
                                         this.setState({ wb: e })
                                     }}
@@ -128,7 +118,7 @@ class CameraScreen extends Component {
                                 />
 
                                 <RadioGroup
-                                    color="pink"
+                                    color="red"
                                     change={(e) => {
                                         this.setState({ fm: e })
                                     }}
@@ -138,10 +128,10 @@ class CameraScreen extends Component {
                                 />
 
                                 <RadioGroup
-                                    color="pink"
-                                    change={async (e) => {
-                                        await this.setState({ ratio: e })
-                                        await this.getSizes();
+                                    color="red"
+                                    change={(e) => {
+                                        this.setState({ ratio: e })
+                                        this.getSizes();
                                     }}
                                     direction="column"
                                     data={this.ratios}
@@ -149,10 +139,8 @@ class CameraScreen extends Component {
                                 />
 
                                 <RadioGroup
-                                    color="pink"
+                                    color="red"
                                     change={(e) => {
-                                        console.log(e);
-
                                         this.setState({ ps: e })
                                     }}
                                     direction="column"
@@ -163,6 +151,8 @@ class CameraScreen extends Component {
                         </View>
 
                     </Animated.View>
+
+
                 </View>
             );
         }
@@ -186,34 +176,35 @@ class CameraScreen extends Component {
                 ToastAndroid.CENTER
             );
         }
+
     }
 
     getSizes = async () => {
 
 
         if (this.camera) {
-            console.log(this.state.ratio);
-
             const sizes = await this.camera.getAvailablePictureSizesAsync(this.state.ratio)
             this.setState({ sizes })
+
+            console.log('sizes');
         }
     };
 }
 
 const styles = StyleSheet.create({
     buttons: {
-        flex: 1,
-        flexDirection: 'row',
         position: 'absolute',
-        backgroundColor: "rgba(0,0,0,0)",
         bottom: 0,
+        flexDirection: "row",
         justifyContent: "center",
-        alignSelf: 'center',
+        alignItems: "center",
+        left: 0,
+        right: 0
     },
     settings: {
         position: 'absolute',
         top: 0,
-        backgroundColor: 'rgba(0,0,0,0.8)',
+        backgroundColor: 'rgba(0,0,0,0.6)',
         flex: 1,
         width: "100%",
         height: "100%",
@@ -221,8 +212,8 @@ const styles = StyleSheet.create({
     },
     settingsTitle: {
         color: "white",
-        padding: 10,
-        fontSize: 15,
+        padding: 20,
+        fontSize: 20,
         fontWeight: "400",
         textTransform: 'uppercase'
     },
@@ -233,7 +224,6 @@ const styles = StyleSheet.create({
         width: "50%",
         height: "100%",
     }
-
 })
 
 export default CameraScreen;
